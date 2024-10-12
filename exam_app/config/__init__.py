@@ -1,4 +1,28 @@
-"""設定の定義"""
+"""
+設定の定義
+
+Attributes
+----------
+DEFAULT_SETTINGS : dict[str, int | str]
+    デフォルト設定
+REQUIRED_COLUMNS : tuple[str, ...]
+    設問データの必須列項目
+SETTINGS : dict[str, int | str]
+    設定値
+FILE_NAME: Final
+    設問データのファイル名
+FONT_NAME : Final
+    フォント名
+FONT_SIZE : Final
+    フォントサイズ (pt)
+WIDTH : Final
+    幅 (px)
+HEIGHT : Final
+    高さ (px)
+PADDING : Final
+    余白 (px)
+
+"""
 
 from typing import Final
 
@@ -8,7 +32,7 @@ from exam_app.config.setting import JsonFile
 # TODO: GUI作成時に適宜修正
 DEFAULT_SETTINGS: dict[str, int | str] = {
     "file_name": "question.csv",
-    "font": "",
+    "font_name": "",
     "font_size": 18,
     "width": 640,
     "height": 480,
@@ -34,17 +58,11 @@ def read_setting_file() -> dict[str, int | str]:
     dict[str, int | str]
         設定値
 
-    Notes
-    -----
-    default_settings : dict[str, int | str] | None
-        設定ファイルがない、または設定項目が不足している場合の設定値, by default None
-    dir_layer : int
-        設定ファイルのディレクトリ, 0: config, 1: exam_app, by default 0
-
     """
     settings: dict[str, int | str] = JsonFile(default_settings=DEFAULT_SETTINGS, dir_layer=1).settings
     if settings:
         print("Successfully read setting file.")
+
     return settings
 
 
@@ -56,7 +74,7 @@ if SETTINGS:
     FILE_NAME: Final = SETTINGS["file_name"]
 
     # ウィンドウ設定
-    FONT: Final = SETTINGS["font"]
+    FONT_NAME: Final = SETTINGS["font_name"]
     FONT_SIZE: Final = SETTINGS["font_size"]
     WIDTH: Final = SETTINGS["width"]
     HEIGHT: Final = SETTINGS["height"]
