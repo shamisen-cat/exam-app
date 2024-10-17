@@ -1,118 +1,159 @@
-"""
-設定ファイルの読み込み
+"""Read the setting file.
 
 Attributes
 ----------
-JsonFile : class
-    JSONファイルから設定値を読み込み、設定値を定義する。
+SettingDict : TypedDict
+    Define value types for the settings.
+DEFAULT_SETTINGS : Final[SettingDict]
+    If no JSON file for the settings, the following settings will be used.
+JsonSchemaError : Exception
+    Base class for all schema errors when read the JSON file.
+RequiredKeysError : JsonSchemaError
+    If no required keys in the JSON file.
+UnwantedKeysError : JsonSchemaError
+    If unwanted keys in the JSON file.
+InvalidValueTypeError : JsonSchemaError
+    If there is an invalid value type in the JSON file.
 
 """
 
-from __future__ import annotations
-
-import functools
 import json
-from collections.abc import Callable
 from pathlib import Path
-from typing import Final, TypeVar
-
-C = TypeVar("C", bound=Callable)
-
-# JSONファイルのファイル名
-FILE_NAME: Final[str] = "setting.json"
+from typing import Any, Final, TypedDict
 
 
-def singleton(cls: C) -> C:  # noqa: D103
-    __instance = None
+class SettingDict(TypedDict):
+    """Define value types for the settings."""
 
-    @functools.wraps(cls)
-    def inner(*args, **kwargs):  # noqa: ANN202
-        nonlocal __instance
-        if __instance is None:
-            __instance = cls(*args, **kwargs)
-        return __instance
-
-    return inner  # type: ignore  # noqa: PGH003
+    file_name: str
+    font_name: str
+    font_size: int
+    width: int
+    height: int
+    padding: int
 
 
-@singleton
-class JsonFile:
-    """
-    JSONファイルから設定値を読み込み、設定値を定義する。
+# If there is no JSON file for the settings, the following settings will be used.
+DEFAULT_SETTINGS: Final[SettingDict] = {
+    "file_name": "question.csv",
+    "font_name": "",
+    "font_size": 18,
+    "width": 640,
+    "height": 480,
+    "padding": 8,
+}
 
-    Attributes
-    ----------
-    __settings : dict[str, int | str]
-        設定値
 
-    """
+class JsonSchemaError(Exception):
+    """Base class for all schema errors when read the JSON file."""
 
-    def __init__(self, default_settings: dict[str, int | str] | None = None, dir_layer: int = 0) -> None:
-        """
-        JSONファイルがない、または設定項目が不足している場合、default_settingsの値を読み込む。
+
+class RequiredKeysError(JsonSchemaError):  # noqa: D101
+    def __init__(self, keys: set[str]) -> None:
+        """If no required keys in the JSON file.
 
         Parameters
         ----------
-        default_settings : dict[str, int | str] | None, default None
-            デフォルトの設定値
-        dir_layer : int, default 0
-            JSONファイルのディレクトリ階層, 0: カレントディレクトリ, 1: 親ディレクトリ
+        keys : set[str]
+            Required keys
 
         """
-        if default_settings is None:
-            default_settings = {}
+        super().__init__(f"No required keys in the JSON file: {keys}")
 
-        parent: Path = Path(__file__).resolve().parents[dir_layer]
-        file: Path = parent.joinpath(FILE_NAME)
 
-        settings: dict[str, int | str]
-        try:
-            # JSONファイルの読み込み
-            with Path.open(file, encoding="UTF-8") as f:
-                settings = json.load(f)
+class UnwantedKeysError(JsonSchemaError):  # noqa: D101
+    def __init__(self, keys: set[str]) -> None:
+        """If unwanted keys in the JSON file.
 
-            # 設定項目が不足している場合、設定値を追加する。
-            for key, val in default_settings.items():
-                settings.setdefault(key, val)
-        except FileNotFoundError:
-            settings = default_settings
+        Parameters
+        ----------
+        keys : set[str]
+            Unwanted keys
 
-            # JSONファイルの出力
-            with Path.open(file, "w", encoding="UTF-8") as f:
-                json.dump(default_settings, f, indent=4)
-        except json.decoder.JSONDecodeError:
-            print("Failed to read settings from JSON file.")
-            settings = {}
+        """
+        super().__init__(f"Unwanted keys in the JSON file: {keys}")
 
-        self.__settings: dict[str, int | str] = settings
 
-    @property
-    def settings(self) -> dict[str, int | str]:  # noqa: D102
-        return self.__settings
+class InvalidValueTypeError(JsonSchemaError):  # noqa: D101
+    def __init__(self, key: str, value_type: type, default_type: type) -> None:
+        """If there is an invalid value type in the JSON file.
+
+        Parameters
+        ----------
+        key : str
+            Setting key
+        value_type : type
+            Invalid value type
+        default_type : type
+            Value type in the 'DEFAULT_SETTINGS'
+
+        """
+        super().__init__(f"'{key}' {default_type} is an invalid value in the JSON file: {value_type}")
+
+
+def read_json_file(file_name: str, dir_layer: int = 1) -> SettingDict | None:
+    """Load settings from the JSON file and return the settings.
+
+    Parameters
+    ----------
+    file_name : str
+        JSON file name
+    dir_layer : int, optional
+        JSON file directory hierarchy, 0: Current, 1: Parent, by default 1
+
+    Returns
+    -------
+    SettingDict | None
+        If the load fails, returns None.
+
+    """
+    settings: SettingDict | None = None
+
+    parent: Path = Path(__file__).resolve().parents[dir_layer]
+    file: Path = parent.joinpath(file_name)
+
+    try:
+        with Path.open(file, encoding="UTF-8") as f:
+            json_settings: dict[str, Any] = json.load(f)
+
+        # Compare with the schema of the 'DEFAULT_SETTINGS'.
+        # If an error occurs, go to the exception 'JsonSchemaError'.
+        json_keys: set[str] = set(json_settings.keys())
+        default_keys: set[str] = set(DEFAULT_SETTINGS.keys())
+
+        if json_keys == default_keys:
+            for key, value in json_settings.items():
+                value_type: type = type(value)
+                default_type: type = type(DEFAULT_SETTINGS.get(key))
+
+                if value_type is not default_type:
+                    raise InvalidValueTypeError(key=key, value_type=value_type, default_type=default_type)
+        else:
+            required_keys: set[str] = default_keys.difference(json_keys)
+            unwanted_keys: set[str] = json_keys.difference(default_keys)
+
+            if required_keys:
+                raise RequiredKeysError(keys=required_keys)
+
+            if unwanted_keys:
+                raise UnwantedKeysError(keys=unwanted_keys)
+
+        settings = json_settings  # type: ignore  # noqa: PGH003
+    except FileNotFoundError:
+        with Path.open(file, "w", encoding="UTF-8") as f:
+            json.dump(DEFAULT_SETTINGS, f, indent=4)
+
+        settings = DEFAULT_SETTINGS
+    except json.decoder.JSONDecodeError as e:
+        print(type(e), "Failed to load settings from the JSON file.", sep="\n")
+    except JsonSchemaError as e:
+        print(type(e), e, sep="\n")
+
+    return settings
 
 
 if __name__ == "__main__":
-    settings_1: dict[str, int | str] = {"font_name": "", "font_size": 18}
-    settings_2: dict[str, int | str] = {"font_name": "HackGen", "font_size": 12, "width": 640}
+    settings: SettingDict | None = read_json_file("setting.json")
 
-    print("Generating an instance.")
-    instance_1: JsonFile = JsonFile(settings_1)
-    instance_2: JsonFile = JsonFile(settings_2)
-    instance_3: JsonFile = JsonFile()
-
-    print("settings_1:", instance_1.settings)
-    print("settings_2:", instance_2.settings)
-    print("settings_3:", instance_3.settings)
-
-    print("instance_1 is instance_2:", instance_1 is instance_2)
-    print("instance_1 is instance_3:", instance_1 is instance_3)
-
-    print("Modifying and Adding settings.")
-    instance_1.settings["font_name"] = "HackGen"
-    instance_2.settings["font_size"] = 12
-    instance_3.settings["width"] = 640
-
-    print("settings_1:", instance_1.settings)
-
-    print("instance_1 is instance_2:", instance_1 is instance_2)
-    print("instance_1 is instance_3:", instance_1 is instance_3)
+    if settings:
+        print(settings)
