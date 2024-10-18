@@ -15,7 +15,7 @@ FONT_SIZE : int
 WIDTH : int
     Window width / px
 HEIGHT : int
-    Window Height / px
+    Window height / px
 PADDING : int
     Margin / px
 

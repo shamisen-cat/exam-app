@@ -85,7 +85,7 @@ class InvalidValueTypeError(JsonSchemaError):  # noqa: D101
         value_type : type
             Invalid value type
         default_type : type
-            Value type in the 'DEFAULT_SETTINGS'
+            Value type in 'DEFAULT_SETTINGS'
 
         """
         super().__init__(f"'{key}' {default_type} is an invalid value in the JSON file: {value_type}")
@@ -98,8 +98,8 @@ def read_json_file(file_name: str, dir_layer: int = 1) -> SettingDict | None:
     ----------
     file_name : str
         JSON file name
-    dir_layer : int, optional
-        JSON file directory hierarchy, 0: Current, 1: Parent, by default 1
+    dir_layer : int, default 1
+        JSON file directory hierarchy, 0: Current, 1: Parent
 
     Returns
     -------
@@ -116,8 +116,8 @@ def read_json_file(file_name: str, dir_layer: int = 1) -> SettingDict | None:
         with Path.open(file, encoding="UTF-8") as f:
             json_settings: dict[str, Any] = json.load(f)
 
-        # Compare with the schema of the 'DEFAULT_SETTINGS'.
-        # If an error occurs, go to the exception 'JsonSchemaError'.
+        # Compare with the schema in 'DEFAULT_SETTINGS'.
+        # If an error occurs, go to the exception labeled 'JsonSchemaError'.
         json_keys: set[str] = set(json_settings.keys())
         default_keys: set[str] = set(DEFAULT_SETTINGS.keys())
 
