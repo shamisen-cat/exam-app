@@ -1,4 +1,4 @@
-"""Define the config.
+"""Define the configuration.
 
 Attributes
 ----------
@@ -23,22 +23,16 @@ PADDING : int
 
 from typing import Final
 
-from exam_app.config.setting import SettingDict, read_json_file
+from .setting import SettingDict, load_settings
 
-SETTING_FILE_NAME: Final[str] = "setting.json"
+JSON_FILE_NAME: Final[str] = "setting.json"
 
-settings: SettingDict | None = read_json_file(SETTING_FILE_NAME)
+SETTINGS: SettingDict | None = load_settings(JSON_FILE_NAME)
 
-if settings:
-    FILE_NAME: str = settings["file_name"]
-    FONT_NAME: str = settings["font_name"]
-    FONT_SIZE: int = settings["font_size"]
-    WIDTH: int = settings["width"]
-    HEIGHT: int = settings["height"]
-    PADDING: int = settings["padding"]
-
-
-def load_config() -> bool:
-    """Load the config."""
-    # TODO: Add validation
-    return settings is not None
+if SETTINGS:
+    FILE_NAME: str = SETTINGS["file_name"]
+    FONT_NAME: str = SETTINGS["font_name"]
+    FONT_SIZE: int = SETTINGS["font_size"]
+    WIDTH: int = SETTINGS["width"]
+    HEIGHT: int = SETTINGS["height"]
+    PADDING: int = SETTINGS["padding"]
