@@ -5,7 +5,7 @@ Attributes
 SettingDict : TypedDict
     Define value types for the settings.
 DEFAULT_SETTINGS : Final[SettingDict]
-    If no JSON file for the settings, the following settings will be used.
+    If no JSON file for the settings, the settings will be used.
 
 """
 
@@ -15,10 +15,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Final, TypedDict, TypeVar
 
-if __name__ == "__main__":
-    import exception as ex
-else:
-    from . import exception as ex
+from . import exception as ex
 
 F = TypeVar("F", bound=Callable)
 
@@ -50,30 +47,33 @@ def validate_settings(func: F) -> F:  # noqa: D103
     def inner(*args, **kwargs) -> SettingDict | None:
         """Validate the setting values."""
         settings: SettingDict | None = func(*args, **kwargs)
-        if settings:
-            try:
-                file_name: str = settings["file_name"]
-                if not file_name:
-                    raise ex.EmptyFileNameError
+        if not settings:
+            return settings
 
-                font_size: int = settings["font_size"]
-                if font_size < 0:
-                    raise ex.InvalidFontSizeError(font_size)
+        try:
+            file_name: str = settings["file_name"]
+            if not file_name:
+                raise ex.EmptyFileNameError
 
-                width: int = settings["width"]
-                if width < 0:
-                    raise ex.InvalidWidthError(width)
+            font_size: int = settings["font_size"]
+            if font_size < 0:
+                raise ex.InvalidFontSizeError(font_size)
 
-                height: int = settings["height"]
-                if height < 0:
-                    raise ex.InvalidHeightError(height)
+            width: int = settings["width"]
+            if width < 0:
+                raise ex.InvalidWidthError(width)
 
-                padding: int = settings["padding"]
-                if padding < 0:
-                    raise ex.InvalidPaddingError(padding)
-            except ex.SettingValueError as e:
-                print(type(e), e, sep="\n")
-                settings = None
+            height: int = settings["height"]
+            if height < 0:
+                raise ex.InvalidHeightError(height)
+
+            padding: int = settings["padding"]
+            if padding < 0:
+                raise ex.InvalidPaddingError(padding)
+
+        except ex.SettingValueError as e:
+            print(type(e), e, sep="\n")
+            settings = None
 
         return settings
 
@@ -101,6 +101,7 @@ def load_settings(file_name: str, dir_layer: int = 1) -> SettingDict | None:
 
     parent: Path = Path(__file__).resolve().parents[dir_layer]
     file: Path = parent.joinpath(file_name)
+
     try:
         with Path.open(file, encoding="UTF-8") as f:
             json_settings: dict[str, Any] = json.load(f)
@@ -125,19 +126,16 @@ def load_settings(file_name: str, dir_layer: int = 1) -> SettingDict | None:
                 raise ex.InvalidTypeError(key, value_type, required_type)
 
         settings = json_settings  # type: ignore  # noqa: PGH003
+
     except FileNotFoundError:
         with Path.open(file, "w", encoding="UTF-8") as f:
             json.dump(DEFAULT_SETTINGS, f, indent=4)
+
         settings = DEFAULT_SETTINGS
+
     except json.decoder.JSONDecodeError as e:
         print(type(e), "Failed to load settings from the JSON file.", sep="\n")
     except ex.JsonSchemaError as e:
         print(type(e), e, sep="\n")
 
     return settings
-
-
-if __name__ == "__main__":
-    settings: SettingDict | None = load_settings("setting.json")
-    if settings:
-        print(settings)
